@@ -109,7 +109,7 @@ export function* fetchPeopleSaga() {
     const people = yield call(api.fetchPeople)
     yield put({
       type: FETCH_PEOPLE_SUCCESS,
-      payload: people
+      payload: people || []
     })
   } catch (error) {
     yield put({
