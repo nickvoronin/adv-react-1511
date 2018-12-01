@@ -3,7 +3,7 @@ import { Record, List } from 'immutable'
 import { reset } from 'redux-form'
 import { createSelector } from 'reselect'
 import { call, put, takeEvery } from 'redux-saga/effects'
-import { generateId } from '../services/util'
+import api from '../services/api'
 
 /**
  * Constants
@@ -89,7 +89,7 @@ export function addPerson(person) {
 export function* addPersonSaga(action) {
   const { person } = action.payload
 
-  const id = yield call(generateId)
+  const id = yield call(api.createPerson, person)
 
   yield put({
     type: ADD_PERSON,
