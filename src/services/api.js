@@ -7,11 +7,13 @@ window.firebase = firebase
 class ApiService {
   fb = firebase
 
+  // Auth
   signIn = (email, password) =>
     this.fb.auth().signInWithEmailAndPassword(email, password)
   signUp = (email, password) =>
     this.fb.auth().createUserWithEmailAndPassword(email, password)
 
+  // Events
   fetchAllEvents = () =>
     this.fb
       .database()
@@ -29,15 +31,21 @@ class ApiService {
       .once('value')
       .then((data) => data.val())
 
+  // People
   createPerson = (person) =>
     this.fb
       .database()
       .ref('people')
       .push(person)
-      .then((res) => {
-        // return id of created person
-        return res.key
-      })
+      // return id of created person
+      .then((res) => res.key)
+
+  fetchPeople = () =>
+    this.fb
+      .database()
+      .ref('people')
+      .once('value')
+      .then((res) => res.val())
 
   onAuthStateChanged = (callback) => this.fb.auth().onAuthStateChanged(callback)
 }

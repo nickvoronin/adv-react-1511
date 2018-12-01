@@ -2,7 +2,7 @@ import { appName } from '../config'
 import { Record, List } from 'immutable'
 import { reset } from 'redux-form'
 import { createSelector } from 'reselect'
-import { call, put, takeEvery } from 'redux-saga/effects'
+import { all, call, put, takeEvery, select } from 'redux-saga/effects'
 import api from '../services/api'
 
 /**
@@ -12,6 +12,10 @@ export const moduleName = 'people'
 const prefix = `${appName}/${moduleName}`
 export const ADD_PERSON = `${prefix}/ADD_PERSON`
 export const ADD_PERSON_REQUEST = `${prefix}/ADD_PERSON_REQUEST`
+export const FETCH_PEOPLE_REQUEST = `${prefix}/FETCH_PEOPLE_REQUEST`
+export const FETCH_PEOPLE_START = `${prefix}/FETCH_PEOPLE_START`
+export const FETCH_PEOPLE_SUCCESS = `${prefix}/FETCH_PEOPLE_SUCCESS`
+export const FETCH_PEOPLE_ERROR = `${prefix}/FETCH_PEOPLE_ERROR`
 
 /**
  * Reducer
@@ -25,20 +29,9 @@ const PersonRecord = Record({
 })
 
 const ReducerState = Record({
-  entities: new List([
-    new PersonRecord({
-      id: 1,
-      firstName: 'Roma',
-      lastName: 'Yakobchuk',
-      email: 'qwer@awsd.com'
-    }),
-    new PersonRecord({
-      id: 2,
-      firstName: 'Ilya',
-      lastName: 'Kantor',
-      email: 'qwer@aksdfhg.com'
-    })
-  ])
+  loading: false,
+  loaded: false,
+  entities: new List([])
 })
 
 export default function reducer(state = new ReducerState(), action) {
@@ -49,6 +42,13 @@ export default function reducer(state = new ReducerState(), action) {
       return state.update('entities', (entities) =>
         entities.push(new PersonRecord(payload.person))
       )
+    case FETCH_PEOPLE_START:
+      return state.set('loading', true).set('loaded', false)
+    case FETCH_PEOPLE_SUCCESS:
+      return state
+        .set('loading', false)
+        .set('loaded', true)
+        .set('entities', new List(Object.values(payload)))
 
     default:
       return state
@@ -62,6 +62,14 @@ export const stateSelector = (state) => state[moduleName]
 export const peopleSelector = createSelector(
   stateSelector,
   (state) => state.entities.valueSeq().toArray()
+)
+export const loadingSelector = createSelector(
+  stateSelector,
+  (state) => state.loading
+)
+export const loadedSelector = createSelector(
+  stateSelector,
+  (state) => state.loaded
 )
 
 export const idSelector = (_, props) => props.id
@@ -82,9 +90,34 @@ export function addPerson(person) {
   }
 }
 
+export function fetchPeople() {
+  return {
+    type: FETCH_PEOPLE_REQUEST
+  }
+}
+
 /**
  * Sagas
  **/
+
+export function* fetchPeopleSaga() {
+  try {
+    if (yield select(loadingSelector)) {
+      return
+    }
+    yield put({ type: FETCH_PEOPLE_START })
+    const people = yield call(api.fetchPeople)
+    yield put({
+      type: FETCH_PEOPLE_SUCCESS,
+      payload: people
+    })
+  } catch (error) {
+    yield put({
+      type: FETCH_PEOPLE_ERROR,
+      error
+    })
+  }
+}
 
 export function* addPersonSaga(action) {
   const { person } = action.payload
@@ -102,5 +135,8 @@ export function* addPersonSaga(action) {
 }
 
 export function* saga() {
-  yield takeEvery(ADD_PERSON_REQUEST, addPersonSaga)
+  yield all([
+    takeEvery(ADD_PERSON_REQUEST, addPersonSaga),
+    takeEvery(FETCH_PEOPLE_REQUEST, fetchPeopleSaga)
+  ])
 }
